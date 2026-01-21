@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nafaka Geçmiş Faiz Hesaplama</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏛️ Nafaka Geçmiş Faiz Hesaplama Sistemi</h1>
+            <p class="subtitle">Geçmiş nafaka alacaklarınızın faiz hesaplamasını yapın</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Adım 1: Otomatik Dönem Oluşturma -->
+            <section class="card" id="step1">
+                <div class="card-header">
+                    <h2>📅 Adım 1: Nafaka Dönemlerini Oluştur</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="startDate">Başlangıç Tarihi</label>
+                            <input type="date" id="startDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate">Bitiş Tarihi</label>
+                            <input type="date" id="endDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="monthlyAmount">Aylık Nafaka Tutarı (₺)</label>
+                            <input type="number" id="monthlyAmount" step="0.01" min="0" placeholder="Örn: 5000" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dueDay">Muacceliyet Günü</label>
+                            <input type="number" id="dueDay" min="1" max="31" placeholder="Örn: 5" required>
+                            <small>Nafakanın her ay hangi gününde muaccel olduğu</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="annualIncreaseRate">Yıllık Artış Oranı (%) - Opsiyonel</label>
+                            <input type="number" id="annualIncreaseRate" step="0.01" min="0" placeholder="Örn: 10">
+                            <small>Nafaka tutarında yıllık artış varsa</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="increaseMonth">Artış Ayı - Opsiyonel</label>
+                            <select id="increaseMonth">
+                                <option value="1">Ocak</option>
+                                <option value="2">Şubat</option>
+                                <option value="3">Mart</option>
+                                <option value="4">Nisan</option>
+                                <option value="5">Mayıs</option>
+                                <option value="6">Haziran</option>
+                                <option value="7">Temmuz</option>
+                                <option value="8">Ağustos</option>
+                                <option value="9">Eylül</option>
+                                <option value="10">Ekim</option>
+                                <option value="11">Kasım</option>
+                                <option value="12">Aralık</option>
+                            </select>
+                            <small>Artışın uygulanacağı ay</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="generatePeriods()">
+                        ✨ Dönemleri Oluştur
+                    </button>
+                </div>
+            </section>
+
+            <!-- Adım 2: Dönem Düzenleme -->
+            <section class="card" id="step2" style="display: none;">
+                <div class="card-header">
+                    <h2>✏️ Adım 2: Dönemleri Düzenle</h2>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <button class="btn btn-secondary" onclick="addPeriodManual()">
+                            ➕ Manuel Dönem Ekle
+                        </button>
+                        <span class="period-count" id="periodCount"></span>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table id="periodsTable">
+                            <thead>
+                                <tr>
+                                    <th>Sıra</th>
+                                    <th>Muacceliyet Tarihi</th>
+                                    <th>Tutar (₺)</th>
+                                    <th>Faiz Oranı (%)</th>
+                                    <th>Açıklama</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="periodsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Adım 3: Faiz Hesaplama -->
+            <section class="card" id="step3" style="display: none;">
+                <div class="card-header">
+                    <h2>🧮 Adım 3: Faiz Hesapla</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="calculationEndDate">Hesaplama Bitiş Tarihi</label>
+                            <input type="date" id="calculationEndDate" required>
+                            <small>Faiz hangi tarihe kadar hesaplanacak</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="interestRate">Varsayılan Faiz Oranı (%)</label>
+                            <input type="number" id="interestRate" step="0.01" min="0" value="24" placeholder="Örn: 24" required>
+                            <small>Tüm dönemler için varsayılan oran</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Faize Esas Gün</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="dayBasis" value="360" checked>
+                                    <span>360 Gün</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="dayBasis" value="365">
+                                    <span>365 Gün</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <strong>💡 İpucu:</strong> Varsayılan faiz oranı tüm dönemler için kullanılır. Belirli dönemler için farklı faiz oranı uygulamak istiyorsanız, Adım 2'deki tabloda "Faiz Oranı" sütununa tıklayarak dönem bazlı faiz oranı belirleyebilirsiniz.
+                    </div>
+                    <button class="btn btn-success" onclick="calculateInterest()">
+                        💰 Faiz Hesapla
+                    </button>
+                </div>
+            </section>
+
+            <!-- Takvim Doğrulama -->
+            <section class="card" id="calendarValidation">
+                <div class="card-header">
+                    <h2>📅 Takvim Doğrulama Sistemi</h2>
+                </div>
+                <div class="card-body">
+                    <p>Sistemin tarih hesaplamalarının doğruluğunu kontrol edin. Artık yıllar, ay gün sayıları ve takvim tutarlılığı test edilir.</p>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="validationStartYear">Başlangıç Yılı</label>
+                            <input type="number" id="validationStartYear" value="2000" min="1900" max="2100">
+                        </div>
+                        <div class="form-group">
+                            <label for="validationEndYear">Bitiş Yılı</label>
+                            <input type="number" id="validationEndYear" value="2030" min="1900" max="2100">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="validateCalendar()">
+                        🔍 Takvimi Doğrula
+                    </button>
+                    <div id="validationResults" style="display: none; margin-top: 1.5rem;"></div>
+                </div>
+            </section>
+
+            <!-- Sonuçlar -->
+            <section class="card" id="results" style="display: none;">
+                <div class="card-header">
+                    <h2>📊 Hesaplama Sonuçları</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary btn-sm" onclick="exportToExcel()">📊 Excel İndir</button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportToCSV()">📄 CSV İndir</button>
+                        <button class="btn btn-secondary btn-sm" onclick="printResults()">🖨️ Yazdır</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Özet Kartları -->
+                    <div class="summary-cards">
+                        <div class="summary-card">
+                            <div class="summary-label">Toplam Anapara</div>
+                            <div class="summary-value" id="totalPrincipal">0,00 ₺</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">Toplam Faiz</div>
+                            <div class="summary-value highlight" id="totalInterest">0,00 ₺</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">Genel Toplam</div>
+                            <div class="summary-value grand-total" id="grandTotal">0,00 ₺</div>
+                        </div>
+                    </div>
+
+                    <!-- Hesaplama Bilgileri -->
+                    <div class="calculation-info" id="calculationInfo"></div>
+
+                    <!-- Detaylı Sonuçlar Tablosu -->
+                    <div class="table-container">
+                        <table id="resultsTable">
+                            <thead>
+                                <tr>
+                                    <th>Sıra</th>
+                                    <th>Muacceliyet Tarihi</th>
+                                    <th>Açıklama</th>
+                                    <th>Anapara (₺)</th>
+                                    <th>Gün Sayısı</th>
+                                    <th>Faiz Oranı (%)</th>
+                                    <th>Faiz (₺)</th>
+                                    <th>Toplam (₺)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modal for Manual Period Add -->
+    <div id="manualPeriodModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Manuel Dönem Ekle</h3>
+                <span class="close" onclick="closeManualModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="manualDueDate">Muacceliyet Tarihi</label>
+                    <input type="date" id="manualDueDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="manualAmount">Tutar (₺)</label>
+                    <input type="number" id="manualAmount" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="manualDescription">Açıklama</label>
+                    <input type="text" id="manualDescription" placeholder="Örn: Ocak 2024 Nafakası">
+                </div>
+                <div class="form-group">
+                    <label for="manualInterestRate">Özel Faiz Oranı (%) - Opsiyonel</label>
+                    <input type="number" id="manualInterestRate" step="0.01" min="0" placeholder="Boş bırakılırsa varsayılan oran kullanılır">
+                    <small>Bu döneme özel faiz oranı belirlemek için</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeManualModal()">İptal</button>
+                <button class="btn btn-primary" onclick="saveManualPeriod()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
